@@ -1,0 +1,75 @@
+import asyncio
+import os
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from aiogram.filters import Command
+from transformers import pipeline
+from asyncio import to_thread
+from aiogram.fsm.storage.memory import MemoryStorage
+import logging
+
+# Логирование
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Получение токена из переменных окружения или прямой запись
+API_TOKEN = os.getenv("API_TOKEN") or 'APITOKEN'
+
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(storage=MemoryStorage())
+
+# Инициализация модели
+try:
+    classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+except Exception as e:
+    logger.error(f"Ошибка загрузки модели: {e}")
+    classifier = None
+
+
+class AdAnalyzer:
+    """Анализ рекламного контента в сообщениях с использованием ИИ."""
+
+    def is_advertisement(self, text: str) -> bool:
+        """Проверяет, является ли текст рекламой с помощью ИИ-модели."""
+        if not classifier:
+            logger.error("Модель не инициализирована.")
+            return False
+        try:
+            result = classifier(text, candidate_labels=["advertisement", "not advertisement"])
+            ad_score = result['scores'][result['labels'].index('advertisement')]
+            return ad_score > 0.8
+        except Exception as e:
+            logger.error(f"Ошибка анализа текста: {e}")
+            return False
+
+
+ad_analyzer = AdAnalyzer()
+
+
+@dp.message(Command("start"))
+async def start_command(message: Message):
+    await message.answer(
+        "Привет! Я бот, использующий ИИ для анализа сообщений. "
+        "Добавьте меня в группу с правами администратора, и я буду удалять рекламные сообщения."
+    )
+
+
+@dp.message(F.text)
+async def check_and_delete_message(message: Message):
+    if not message.text:
+        return  # Пропускаем сообщения без текста
+    try:
+        if await to_thread(ad_analyzer.is_advertisement, message.text):
+            await message.delete()
+            logger.info(f"Удалено сообщение: {message.text}")
+    except Exception as e:
+        logger.error(f"Ошибка при обработке сообщения: {e}")
+
+
+async def main():
+    logger.info("Бот запущен!")
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
