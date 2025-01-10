@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Получение токена из переменных окружения или прямой запись
-API_TOKEN = os.getenv("API_TOKEN") or '8020336915:AAE_czFnV_nliXmB46JDLquHE-LTkt7zjzU'
+API_TOKEN = os.getenv("API_TOKEN") or 'APITOKEN'
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
