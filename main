@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Получение токена из переменных окружения или прямой запись
-API_TOKEN = os.getenv("API_TOKEN") or 'APITOKEN'
+API_TOKEN = os.getenv("API_TOKEN") or '8020336915:AAE_czFnV_nliXmB46JDLquHE-LTkt7zjzU'
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -35,13 +35,17 @@ class AdAnalyzer:
             logger.error("Модель не инициализирована.")
             return False
         try:
-            result = classifier(text, candidate_labels=["advertisement", "not advertisement"])
+            # Игнорировать короткие сообщения
+            if len(text.split()) < 3:
+                return False
+
+            result = classifier(text, candidate_labels=["advertisement", "not advertisement", "neutral"])
+            logger.info(f"Результат классификации: {result}")
             ad_score = result['scores'][result['labels'].index('advertisement')]
-            return ad_score > 0.8
+            return ad_score > 0.9  # Увеличенный порог
         except Exception as e:
             logger.error(f"Ошибка анализа текста: {e}")
             return False
-
 
 ad_analyzer = AdAnalyzer()
 
